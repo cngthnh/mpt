@@ -34,33 +34,6 @@ ChartJS.register(
   ...registerables
 );
 
-const getData = (data, originalData) => {
-  return {
-    type: 'line',
-    labels: Array.from(data.keys()),
-    datasets: [
-      {
-        label: 'Updated',
-        data,
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-        tension: 0.3,
-        pointHitRadius: 25,
-        dragData: true,
-      },
-      {
-        label: 'Original',
-        data: originalData,
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-        tension: 0.3,
-        pointHitRadius: 25,
-        dragData: false,
-      },
-    ]
-  }
-};
-
 
 function OnboardingComponent({onSubmit}) {
   return (
@@ -120,90 +93,141 @@ function SimpleFrontend({taskData, isOnboarding, onSubmit, onError}) {
 
   const originalData = React.useRef([...taskData.data.value]);
   React.useEffect(() => {
-
-  }, answers);
+  }, answers, stagingAnswers);
 
   const handleInputChange = (idx, event) => {
-    stagingAnswers[idx] = event.target.value;
-    if (!Number.isNaN(stagingAnswers[idx])) {
-      answers[idx] = +stagingAnswers[idx];
-      setAnswers([...answers]);
+    if (!Number.isNaN(+event.target.value)) {
+      setAnswers(answers => {
+        const result = [...answers];
+        result[idx] = +event.target.value;
+        return result;
+      });
+      setStagingAnswers(stagingAnswers => {
+        const result = [...stagingAnswers];
+        result[idx] = event.target.value;
+        return result;
+      });
     } else {
-      setStagingAnswers([...stagingAnswers]);
+      setStagingAnswers(stagingAnswers => {
+        const result = [...stagingAnswers];
+        result[idx] = event.target.value;
+        return result;
+      });
     }
   };
 
   const resetDataChange = (idx) => {
-    answers[idx] = originalData.current[idx];
-    stagingAnswers[idx] = originalData.current[idx];
-    setAnswers([...answers]);
-    setStagingAnswers([...stagingAnswers]);
+    const newAnswers = [...answers];
+    const newStagingAnswers = [...stagingAnswers];
+    newAnswers[idx] = originalData.current[idx];
+    newStagingAnswers[idx] = originalData.current[idx];
+    setAnswers(newAnswers);
+    setStagingAnswers(newStagingAnswers);
   };
 
   const discardChanges = () => {
-    Array.from(originalData.current.keys()).map((idx) => {
-      answers[idx] = originalData.current[idx];
-      stagingAnswers[idx] = originalData.current[idx];
+    setAnswers(answers => {
+      const result = [...answers];
+      Array.from(originalData.current.keys()).map((idx) => {
+        result[idx] = originalData.current[idx];
+      });
+      return result;
     });
-    setAnswers([...answers]);
-    setStagingAnswers([...stagingAnswers]);
+    setStagingAnswers(stagingAnswers => {
+      const result = [...stagingAnswers];
+      Array.from(originalData.current.keys()).map((idx) => {
+        result[idx] = originalData.current[idx];
+      });
+      return result;
+    });
   };
 
-  const modifiedData = React.useMemo(() => {
-    return Array.from(originalData.current.keys()).filter((idx) => {
-      if (originalData.current[idx] !== answers[idx]) {
-        return true;
-      }
-      return false;
-    });
+  const modifiedData = Array.from(originalData.current.keys()).filter((idx) => {
+    if (originalData.current[idx] !== answers[idx]) {
+      return true;
+    }
+    return false;
   });
 
-  const options = React.useMemo(() => {
-    return {
-      responsive: true,
-      plugins: {
-        legend: {
-          position: 'top',
-        },
-        title: {
-          display: true,
-          text: 'Data',
-        },
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Data',
+      },
+      zoom: {
         zoom: {
-          zoom: {
-            wheel: {
-              enabled: true,
-            },
-            pinch: {
-              enabled: true
-            },
-            mode: 'x',
-          }
-        },
-        dragData: {
-          showTooltip: true,
-          round: 3,
-          onDragStart: function(e, element) {
+          wheel: {
+            enabled: true,
           },
-          onDrag: function(e, datasetIndex, index, value) {
+          pinch: {
+            enabled: true
           },
-          onDragEnd: function(e, datasetIndex, index, value) {
-            answers[index] = value;
-            stagingAnswers[index] = value;
-            setStagingAnswers([...stagingAnswers]);
-            setAnswers([...answers]);
-          },
+          mode: 'x',
         }
+      },
+      dragData: {
+        showTooltip: true,
+        round: 3,
+        onDragStart: function(e, element) {
+        },
+        onDrag: function(e, datasetIndex, index, value) {
+        },
+        onDragEnd: function(e, datasetIndex, index, value) {
+          changeAnswer(index, value);
+        },
       }
-    };
-  });
+    }
+  };
+
+  const changeAnswer = (index, value) => {
+    setStagingAnswers(stagingAnswers => {
+      const result = [...stagingAnswers];
+      result[index] = value;
+      return result;
+    });
+    setAnswers(answers => {
+      const result = [...answers];
+      result[index] = value;
+      return result;
+    });
+  }
+
+  const data = {
+    type: 'line',
+    labels: Array.from(answers.keys()).map(idx => idx + 1),
+    datasets: [
+      {
+        label: 'Updated',
+        data: [...answers],
+        borderColor: 'rgb(255, 99, 132)',
+        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+        tension: 0.3,
+        pointHitRadius: 25,
+        dragData: true,
+      },
+      {
+        label: 'Original',
+        data: [...originalData.current],
+        borderColor: 'rgb(53, 162, 235)',
+        backgroundColor: 'rgba(53, 162, 235, 0.5)',
+        tension: 0.3,
+        pointHitRadius: 25,
+        dragData: false,
+      },
+    ]
+  }
 
   return (
       <div style={{padding: '50px'}}>
         <div className="p-4">
           <h2 className="text-2xl font-semibold mb-4">This is sample task 123</h2>
           <div>
-            <Line options={options} data={getData(answers, originalData.current)} />
+            <Line options={options} data={data} />
             {
               modifiedData.length > 0 &&
               <table className="table w-full mt-3">
